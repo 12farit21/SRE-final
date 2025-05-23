@@ -1,0 +1,19 @@
+groups:
+- name: django_alerts
+  rules:
+  - alert: HighDjangoErrorRate
+    expr: rate(django_http_requests_total{status="500"}[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate on Django app"
+      description: "{{ $labels.instance }} is experiencing a high rate of 500 errors: {{ $value }} req/s."
+  - alert: PostgresDown
+    expr: pg_up == 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "PostgreSQL is down"
+      description: "PostgreSQL instance {{ $labels.instance }} is not responding."
