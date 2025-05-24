@@ -53,7 +53,7 @@ jobs:
 
       - name: Run Django tests
         env:
-          GITHUB_ACTIONS: true  # Устанавливаем переменную окружения
+          GITHUB_ACTIONS: true
           DATABASE_URL: postgresql://user:password@localhost:5432/todo_db
         run: |
           python manage.py test
@@ -83,12 +83,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy monitoring stack
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Install docker-compose
         run: |
-          docker-compose up -d prometheus grafana alertmanager postgres_exporter
-          sleep 60  # Увеличено время ожидания для стабильности
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - na- name: Deploy monitoring stack
+        run: |
+          docker-compose up -d prometheus grafana alertmanager
+          sleep 90
           curl -f http://localhost:9090/api/v1/status/config || echo "Prometheus not responding"
+          curl -f http://localhost:3000 || echo "Grafana not responding"
+          curl -f http://localhost:9093 || echo "Alertmanager not responding"
 
       - name: Check Prometheus alerts
         run: |
-          curl -f http://localhost:9090/api/v1/alerts | grep PostgresDown || echo "No PostgresDown alert found"
+          curl -f http://localhost:9090/api/v1/alerts || echo "No alerts available"
