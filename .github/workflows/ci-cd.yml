@@ -92,7 +92,7 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
-      - na- name: Deploy monitoring stack
+      - name: Deploy monitoring stack
         run: |
           docker-compose up -d prometheus grafana alertmanager
           sleep 90
