@@ -1,3 +1,4 @@
+```yaml
 name: CI/CD Pipeline
 
 on:
@@ -53,6 +54,7 @@ jobs:
 
       - name: Run Django tests
         env:
+          GITHUB_ACTIONS: true  # Устанавливаем переменную окружения
           DATABASE_URL: postgresql://user:password@localhost:5432/todo_db
         run: |
           python manage.py test
@@ -85,9 +87,10 @@ jobs:
       - name: Deploy monitoring stack
         run: |
           docker-compose up -d prometheus grafana alertmanager postgres_exporter
-          sleep 30  # Ждем, пока сервисы запустятся
+          sleep 60  # Увеличено время ожидания для стабильности
           curl -f http://localhost:9090/api/v1/status/config || echo "Prometheus not responding"
 
       - name: Check Prometheus alerts
         run: |
           curl -f http://localhost:9090/api/v1/alerts | grep PostgresDown || echo "No PostgresDown alert found"
+```

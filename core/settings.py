@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from django_prometheus.middleware import PrometheusAfterMiddleware, PrometheusBeforeMiddleware
-
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,11 +18,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    #my apps
     'tasks',
-
-    #third party apps
     'django_prometheus',
 ]
 
@@ -59,13 +54,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
+# Динамическая настройка базы данных
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://user:password@db:5432/todo_db')
+if 'GITHUB_ACTIONS' in os.environ:
+    DATABASE_URL = 'postgresql://user:password@localhost:5432/todo_db'
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'todo_db',
         'USER': 'user',
         'PASSWORD': 'password',
-        'HOST': 'db',
+        'HOST': 'localhost' if 'GITHUB_ACTIONS' in os.environ else 'db',
         'PORT': '5432',
     }
 }
