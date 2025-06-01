@@ -1,79 +1,149 @@
-version: '3.8'
-
 services:
-  web:
+  web1:
     build: .
-    ports:
-      - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/todo_db
+      - DATABASE_URL=postgresql://user:${POSTGRES_PASSWORD}@db:5432/todo_db
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - .:/app
-    labels:
-      - "com.example.description=django-todo-app"
+    networks:
+      - app_network
+
+  web2:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://user:${POSTGRES_PASSWORD}@db:5432/todo_db
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - app_network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web1
+      - web2
+    networks:
+      - app_network
 
   db:
     image: postgres:15
     environment:
       - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=todo_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres.conf:/etc/postgresql/postgresql.conf
+      - ./init-grafana-db.sql:/docker-entrypoint-initdb.d/init-grafana-db.sql
+    command: -c 'config_file=/etc/postgresql/postgresql.conf'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d todo_db"]
+      test: ["CMD-SHELL", "pg_isready -U user"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app_network
 
   prometheus:
     image: prom/prometheus:v2.48.0
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./rules.yml:/etc/prometheus/rules.yml
       - prometheus_data:/prometheus
     depends_on:
-      - web
+      - web1
+      - web2
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+    networks:
+      - app_network
+      - monitoring_network
 
   grafana:
     image: grafana/grafana:10.2.0
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
+      # Основные настройки администратора
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
+      
+      # Отключение Live features для устранения WebSocket ошибок
+      - GF_LIVE_ENABLED=false
+      - GF_FEATURE_TOGGLES_ENABLE=
+      
+      # Настройки аутентификации для предотвращения token errors
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      
+      # Использование SQLite (по умолчанию) для простоты
+      - GF_DATABASE_TYPE=sqlite3
+      
+      # Логирование
+      - GF_LOG_LEVEL=info
+      - GF_LOG_CONSOLE_LEVEL=info
+      
+      # Отключение телеметрии и обновлений
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      
+      # Настройки безопасности
+      - GF_SECURITY_ALLOW_EMBEDDING=true
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+    networks:
+      - monitoring_network
 
   alertmanager:
     image: prom/alertmanager:v0.26.0
     ports:
-      - "9093:9093"
+      - "127.0.0.1:9093:9093"
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
       - alertmanager_data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
+    networks:
+      - monitoring_network
 
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     environment:
-      - DATA_SOURCE_NAME=postgresql://user:password@db:5432/todo_db?sslmode=disable
+      - DATA_SOURCE_NAME=postgresql://user:${POSTGRES_PASSWORD}@db:5432/todo_db?sslmode=disable
+      - PG_EXPORTER_DISABLE_DEFAULT_METRICS=true
+      - PG_EXPORTER_DISABLE_SETTINGS_METRICS=true
     ports:
-      - "9187:9187"
+      - "127.0.0.1:9187:9187"
     depends_on:
       db:
-        condition: service_healthy  # Добавлено для синхронизации
+        condition: service_healthy
+    networks:
+      - app_network
+      - monitoring_network
+
+networks:
+  app_network:
+    driver: bridge
+  monitoring_network:
+    driver: bridge
 
 volumes:
   postgres_data:

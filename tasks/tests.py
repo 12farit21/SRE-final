@@ -25,3 +25,4 @@ class TaskTests(TestCase):
         })
         self.assertEqual(response.status_code, 302)  # Ожидаем редирект после создания
         self.assertEqual(Task.objects.count(), 2)
+

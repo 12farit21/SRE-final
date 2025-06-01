@@ -4,12 +4,21 @@ from django_prometheus.middleware import PrometheusAfterMiddleware, PrometheusBe
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-SECRET_KEY = 'django-insecure-pr3@osk^(&mle=6%ab0nw6r0s^l1x9@hb_!px$+r$s1!x4(!ty'
+SECRET_KEY = os.getenv('SECRET_KEY', 'ybuasdvybadlsvl23892309-124njzvxvxkjl34!@12r')
 
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'web',           # Для обратной совместимости с docker-compose.yml
+    'django-app-0',  # Имя контейнера из Terraform
+    'django-app-1',  # Имя контейнера из Terraform
+    'django-app-0:8000',  # Заголовок Host с портом
+    'django-app-1:8001',  # Заголовок Host с портом
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -64,7 +73,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'todo_db',
         'USER': 'user',
-        'PASSWORD': 'password',
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'password'),
         'HOST': 'localhost' if 'GITHUB_ACTIONS' in os.environ else 'db',
         'PORT': '5432',
     }
