@@ -1,6 +1,7 @@
 -- Инициализация базы данных для Grafana
 -- Создание базы данных grafana_db если она не существует
-CREATE DATABASE grafana_db;
+SELECT 'CREATE DATABASE grafana_db'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'grafana_db')\gexec
 
 -- Предоставление всех привилегий пользователю user на базу grafana_db
 GRANT ALL PRIVILEGES ON DATABASE grafana_db TO "user";

@@ -93,7 +93,13 @@ jobs:
           docker-compose --version
 
       - name: Deploy monitoring stack
+        env:
+          POSTGRES_PASSWORD: password
+          DJANGO_SECRET_KEY: test-secret-key-for-github-actions
+          GF_ADMIN_PASSWORD: admin
         run: |
+          docker-compose up -d db
+          sleep 30
           docker-compose up -d prometheus grafana alertmanager
           sleep 90
           curl -f http://localhost:9090/api/v1/status/config || echo "Prometheus not responding"

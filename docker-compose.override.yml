@@ -1,0 +1,35 @@
+# Override для development среды
+# Используйте: docker-compose -f docker-compose.yml -f docker-compose.override.yml up
+
+version: '3.8'
+
+services:
+  db:
+    # Добавляем логирование для отладки
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Расширенные настройки для разработки
+    environment:
+      - POSTGRES_LOG_STATEMENT=all
+      - POSTGRES_LOG_MIN_DURATION_STATEMENT=0
+    
+  web1:
+    # Включаем Django debug режим для development
+    environment:
+      - DEBUG=True
+    # Перезапуск при изменениях кода
+    volumes:
+      - .:/app
+    command: python manage.py runserver 0.0.0.0:8000
+    
+  web2:
+    # Включаем Django debug режим для development
+    environment:
+      - DEBUG=True
+    # Перезапуск при изменениях кода
+    volumes:
+      - .:/app
+    command: python manage.py runserver 0.0.0.0:8000 
